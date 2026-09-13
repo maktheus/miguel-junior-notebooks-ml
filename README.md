@@ -47,6 +47,8 @@ vendas e variáveis contextuais, com comparação de modelos por métricas de ac
 - [`poc/`](poc/README.md) — protótipo (Node.js) do pipeline de modelagem preditiva
   (identificação de variáveis, comparação de modelos, previsão) sobre uma série
   sintética.
+- [`webapp/`](webapp/README.md) — dashboard React (Vite + React DOM) com o gráfico da
+  série histórica + previsão e a tabela comparativa de modelos.
 
 ## Observação de proximidade metodológica
 
