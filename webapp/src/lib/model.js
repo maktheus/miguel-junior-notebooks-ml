@@ -99,29 +99,81 @@ function metrics(actual, predicted) {
   const errors = actual.map((a, i) => a - predicted[i]);
   const mae = errors.reduce((s, e) => s + Math.abs(e), 0) / n;
   const rmse = Math.sqrt(errors.reduce((s, e) => s + e * e, 0) / n);
-  const mape = (errors.reduce((s, e, i) => s + Math.abs(e / actual[i]), 0) / n) * 100;
+  // Ignora pontos com valor real 0 no MAPE (divisão por zero geraria Infinity/NaN).
+  const mapeTerms = actual
+    .map((a, i) => (a !== 0 ? Math.abs(errors[i] / a) : null))
+    .filter((v) => v != null);
+  const mape = mapeTerms.length > 0 ? (mapeTerms.reduce((a, b) => a + b, 0) / mapeTerms.length) * 100 : NaN;
   const meanActual = actual.reduce((a, b) => a + b, 0) / n;
   const ssTot = actual.reduce((s, a) => s + (a - meanActual) ** 2, 0);
   const ssRes = errors.reduce((s, e) => s + e * e, 0);
-  const r2 = 1 - ssRes / ssTot;
+  const r2 = ssTot > 0 ? 1 - ssRes / ssTot : NaN;
   return { mae, rmse, mape, r2 };
 }
 
-export function runPipeline(seed = 2026) {
-  const { series, fxRate } = generateSeries(seed);
-  const train = series.slice(0, N_MONTHS - TEST_SIZE);
-  const test = series.slice(N_MONTHS - TEST_SIZE);
+// Naive Sazonal (mês análogo) só faz sentido com pelo menos 2 ciclos anuais completos.
+const SEASONAL_MODEL_NAME = "Naive Sazonal (mês análogo)";
+const MIN_POINTS_FOR_SEASONAL = 24;
+
+/**
+ * Roda o pipeline de comparação de modelos.
+ *
+ * @param {number} seed - usado apenas no modo exemplo (série sintética).
+ * @param {{ values: number[], labels?: string[] }|null} externalSeries - quando informado,
+ *   roda o pipeline sobre essa série real (modo "Meus dados") em vez da série sintética.
+ */
+export function runPipeline(seed = 2026, externalSeries = null) {
+  let series, fxRate = null, labels = null, testSize = TEST_SIZE;
+
+  if (externalSeries) {
+    series = externalSeries.values;
+    labels = externalSeries.labels || null;
+    const n = series.length;
+    // Últimos ~20% como teste, com piso de 3 e teto de 12 pontos.
+    testSize = Math.min(12, Math.max(3, Math.round(n * 0.2)));
+    if (n - testSize < 6) {
+      // Série curta demais para o split escolhido: reduz o teste ao mínimo viável.
+      testSize = Math.max(3, Math.min(testSize, n - 6));
+    }
+  } else {
+    const gen = generateSeries(seed);
+    series = gen.series;
+    fxRate = gen.fxRate;
+    testSize = TEST_SIZE;
+  }
+
+  const n = series.length;
+  const train = series.slice(0, n - testSize);
+  const test = series.slice(n - testSize);
+
+  const seasonalOk = n >= MIN_POINTS_FOR_SEASONAL;
+  const modelEntries = Object.entries(MODEL_FNS).filter(
+    ([name]) => seasonalOk || name !== SEASONAL_MODEL_NAME
+  );
 
   const results = {};
   let best = null;
-  for (const [name, fn] of Object.entries(MODEL_FNS)) {
-    const preds = fn(train, TEST_SIZE);
+  for (const [name, fn] of modelEntries) {
+    const preds = fn(train, testSize);
     const m = metrics(test, preds);
     results[name] = { preds, ...m };
     if (!best || m.rmse < best.rmse) best = { name, rmse: m.rmse };
   }
 
-  const forecast12 = MODEL_FNS[best.name](series, 12);
+  const forecastHorizon = externalSeries ? testSize : 12;
+  const bestFn = Object.fromEntries(modelEntries)[best.name];
+  const forecast12 = bestFn(series, forecastHorizon);
 
-  return { series, fxRate, train, test, results, bestModel: best.name, forecast12 };
+  return {
+    series,
+    fxRate,
+    train,
+    test,
+    results,
+    bestModel: best.name,
+    forecast12,
+    testSize,
+    labels,
+    seasonalSkipped: !seasonalOk,
+  };
 }
