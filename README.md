@@ -44,6 +44,9 @@ vendas e variáveis contextuais, com comparação de modelos por métricas de ac
 
 - `Qualificação_Miguel_Junior_Rev5(1).docx` — documento original do projeto de
   qualificação (fonte da verdade; este README é um resumo derivado dele).
+- [`poc/`](poc/README.md) — protótipo (Node.js) do pipeline de modelagem preditiva
+  (identificação de variáveis, comparação de modelos, previsão) sobre uma série
+  sintética.
 
 ## Observação de proximidade metodológica
 
