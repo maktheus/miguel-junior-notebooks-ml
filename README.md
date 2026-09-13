@@ -49,6 +49,10 @@ vendas e variáveis contextuais, com comparação de modelos por métricas de ac
   sintética.
 - [`webapp/`](webapp/README.md) — dashboard React (Vite + React DOM) com o gráfico da
   série histórica + previsão e a tabela comparativa de modelos.
+- [`docs/revisao-literatura.md`](docs/revisao-literatura.md) — revisão de literatura com
+  6 fontes reais verificadas (busca web), rascunho de apoio para o referencial teórico.
+- [`docs/plano-proximos-passos.md`](docs/plano-proximos-passos.md) — backlog faseado até
+  a defesa.
 
 ## Observação de proximidade metodológica
 
